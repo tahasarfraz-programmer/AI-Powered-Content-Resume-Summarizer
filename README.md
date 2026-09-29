@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # AI-Powered Content & Resume Summarizer
 
 Turn long documents into a clear summary in seconds. Paste an article, upload a PDF or Word file, or link a web page, and get the key points with the important passages **highlighted in the original text**. Switch to the Resume tab to get a structured candidate profile and an optional match score against a job description.
@@ -261,3 +262,6 @@ Issues and pull requests are welcome. Please run `pytest` before submitting, and
 ## License
 
 Released under the [MIT License](LICENSE).
+=======
+# AI-Powered-Content-Resume-Summarizer
+>>>>>>> c3c20e3d073b759cebf644f34a4cc19cdd23d3a2
