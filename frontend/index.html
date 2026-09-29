@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="auto">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI-Powered Content &amp; Resume Summarizer</title>
+<meta name="description" content="Paste, upload, or link a document. It summarizes the document and highlights what matters in the original text.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #edf0f6; --surface: #ffffff; --ink: #0f1729; --muted: #566079; --line: #d8deea;
+  --mark: #ffd93b; --on-mark: #0f1729; --pen: #3348e6; --pen-ink: #ffffff;
+  --good: #14805a; --warn: #b7791f; --bad: #c0362c; --shadow: 0 1px 2px rgba(15,23,41,.05), 0 8px 30px rgba(15,23,41,.06);
+  --sans: "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --serif: "Newsreader", Georgia, "Times New Roman", serif;
+  --ease: cubic-bezier(.2,.7,.2,1);
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="auto"] {
+    --bg: #090e1b; --surface: #121a2c; --ink: #e9efff; --muted: #94a1bd; --line: #24304a;
+    --mark: #f3c92c; --pen: #8593ff; --pen-ink: #0a0f1e; --good: #4cc39a; --warn: #e2b04a; --bad: #f08a80;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 30px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #090e1b; --surface: #121a2c; --ink: #e9efff; --muted: #94a1bd; --line: #24304a;
+  --mark: #f3c92c; --pen: #8593ff; --pen-ink: #0a0f1e; --good: #4cc39a; --warn: #e2b04a; --bad: #f08a80;
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 30px rgba(0,0,0,.25);
+}
+* { box-sizing: border-box; }
+html { background: var(--bg); color-scheme: light dark; }
+body { margin: 0; color: var(--ink); background: var(--bg); font: 400 15.5px/1.55 var(--sans); -webkit-font-smoothing: antialiased; transition: background .3s, color .3s; }
+.wrap { max-width: 1200px; margin: 0 auto; padding: 22px 24px 96px; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--pen); outline-offset: 2px; border-radius: 6px; }
+.hidden { display: none !important; }
+
+/* top bar */
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 44px; }
+.brand { display: flex; align-items: center; gap: 10px; font: 600 clamp(15px, 2.6vw, 22px)/1.15 var(--serif); letter-spacing: -.01em; min-width: 0; }
+.brand svg { flex: none; }
+.brand svg { display: block; }
+.top-r { display: flex; align-items: center; gap: 10px; }
+.badge { white-space: nowrap; font-size: 13px; color: var(--muted); border: 1px solid var(--line); background: var(--surface); padding: 5px 12px; border-radius: 999px; }
+.icon-btn { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; transition: transform .2s var(--ease), border-color .2s; }
+.icon-btn:hover { border-color: var(--ink); transform: rotate(12deg); }
+
+/* hero */
+.hero { max-width: 860px; margin-bottom: 30px; }
+h1 { font: 500 clamp(38px, 6.2vw, 68px)/1.02 var(--serif); letter-spacing: -.03em; margin: 0 0 16px; text-wrap: balance; }
+.hero p { margin: 0; font-size: 18px; color: var(--muted); max-width: 56ch; }
+
+/* studio */
+.studio { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px; box-shadow: var(--shadow); }
+.tabs { position: relative; display: inline-grid; grid-template-columns: 1fr 1fr; background: var(--bg); border-radius: 11px; padding: 4px; margin-bottom: 16px; }
+.tabs .pill { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc(50% - 4px); background: var(--surface); border-radius: 8px; box-shadow: 0 1px 3px rgba(15,23,41,.14); transition: transform .35s var(--ease); }
+.tabs[data-mode="resume"] .pill { transform: translateX(100%); }
+.tabs button { position: relative; z-index: 1; border: 0; background: none; padding: 8px 26px; font-weight: 600; color: var(--muted); cursor: pointer; transition: color .2s; }
+.tabs button[aria-selected="true"] { color: var(--ink); }
+.grid { display: grid; grid-template-columns: 1.55fr 1fr; gap: 18px; }
+label.f { display: block; font-weight: 600; font-size: 14px; margin: 0 0 6px; }
+.ta-wrap { position: relative; }
+textarea, input[type=url], select {
+  width: 100%; font: 400 15.5px/1.55 var(--sans); color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 10px; padding: 11px 13px; transition: border-color .2s, box-shadow .2s;
+}
+textarea:focus, input:focus, select:focus { outline: none; border-color: var(--pen); box-shadow: 0 0 0 3px color-mix(in srgb, var(--pen) 22%, transparent); }
+textarea { resize: vertical; min-height: 210px; display: block; }
+.ta-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; color: var(--muted); font-size: 13.5px; }
+.linkbtn { background: none; border: 0; color: var(--pen); font-weight: 600; cursor: pointer; padding: 2px 0; }
+.linkbtn:hover { text-decoration: underline; }
+.side { display: flex; flex-direction: column; gap: 14px; }
+.drop { position: relative; display: block; border: 1.5px dashed var(--line); border-radius: 12px; padding: 18px 14px; text-align: center; color: var(--muted); cursor: pointer; transition: border-color .2s, background .2s, transform .25s var(--ease); }
+.drop:hover { border-color: var(--pen); }
+.drop.over { border-color: var(--pen); border-style: solid; background: color-mix(in srgb, var(--pen) 8%, transparent); transform: scale(1.02); }
+.drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.drop b { color: var(--ink); }
+.filechip { display: flex; align-items: center; justify-content: space-between; gap: 10px; text-align: left; }
+.filechip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font-weight: 600; }
+.filechip small { color: var(--muted); font-weight: 400; margin-left: 6px; }
+.filechip button { position: relative; z-index: 2; border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 4px 10px; cursor: pointer; }
+.filechip button:hover { border-color: var(--bad); color: var(--bad); }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.actions { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; margin-top: 16px; }
+.go { position: relative; overflow: hidden; display: inline-flex; align-items: center; gap: 10px; border: 0; background: var(--pen); color: var(--pen-ink); font-weight: 700; padding: 12px 26px; border-radius: 11px; cursor: pointer; transition: transform .2s var(--ease), box-shadow .2s; box-shadow: 0 4px 14px color-mix(in srgb, var(--pen) 35%, transparent); }
+.go:hover:not([disabled]) { transform: translateY(-2px); box-shadow: 0 8px 20px color-mix(in srgb, var(--pen) 40%, transparent); }
+.go:active:not([disabled]) { transform: translateY(0) scale(.98); }
+.go[disabled] { cursor: progress; }
+.spin { width: 16px; height: 16px; border-radius: 50%; border: 2.5px solid color-mix(in srgb, var(--pen-ink) 35%, transparent); border-top-color: var(--pen-ink); animation: spin .8s linear infinite; display: none; }
+.go[disabled] .spin { display: block; }
+.hint { color: var(--muted); font-size: 13.5px; }
+.error { color: var(--bad); font-weight: 600; animation: shake .4s; }
+kbd { font: 600 12px var(--sans); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 1px 6px; background: var(--bg); }
+
+/* results */
+.results { margin-top: 26px; display: grid; grid-template-columns: 1.1fr 1fr; gap: 18px; align-items: start; outline: none; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 24px; box-shadow: var(--shadow); min-width: 0; }
+.ph { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; min-height: 30px; }
+.ph h2 { margin: 0; font: 700 14px var(--sans); color: var(--muted); }
+.tag { font-size: 12.5px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: color-mix(in srgb, var(--mark) 40%, transparent); color: var(--ink); }
+.title { font: 500 30px/1.15 var(--serif); letter-spacing: -.015em; margin: 0 0 14px; }
+.tldr { font: 400 20px/1.55 var(--serif); margin: 0 0 24px; }
+.tldr span { opacity: 0; animation: fade .35s ease forwards; }
+.pts { list-style: none; margin: 0 0 22px; padding: 0; display: grid; gap: 10px; }
+.pts li { position: relative; padding-left: 22px; }
+.pts li::before { content: ""; position: absolute; left: 0; top: .62em; width: 10px; height: 10px; border-radius: 3px; background: var(--mark); transform: rotate(-8deg); }
+.chips { display: flex; flex-wrap: wrap; gap: 7px; margin: 0 0 8px; }
+.chip { border: 1px solid var(--line); border-radius: 999px; padding: 3px 12px; font-size: 13.5px; color: var(--muted); background: var(--bg); transition: transform .2s var(--ease), border-color .2s, color .2s; }
+.chip:hover { transform: translateY(-2px); border-color: var(--pen); color: var(--ink); }
+.meta { color: var(--muted); font-size: 13.5px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.tools { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.ghost { border: 1px solid var(--line); background: var(--surface); border-radius: 9px; padding: 7px 14px; font-weight: 600; font-size: 14px; cursor: pointer; transition: border-color .2s, transform .2s var(--ease); }
+.ghost:hover { border-color: var(--ink); transform: translateY(-1px); }
+.nav { display: flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--muted); }
+.nav button { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; display: grid; place-items: center; }
+.nav button:hover { border-color: var(--ink); }
+.source { font: 400 16px/1.75 var(--serif); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 620px; overflow: auto; padding-right: 6px; scroll-behavior: smooth; }
+mark {
+  color: inherit; padding: .04em 0; border-radius: 3px; background: linear-gradient(var(--mark), var(--mark)) no-repeat left center / 0% 90%;
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+  animation: sweep .65s var(--ease) forwards; animation-delay: calc(.4s + var(--n, 0) * .24s);
+}
+mark.on { outline: 2px solid var(--pen); outline-offset: 1px; animation: sweep .01s forwards, pulse .9s var(--ease); }
+
+/* resume */
+.who { font: 500 32px/1.1 var(--serif); letter-spacing: -.02em; margin: 0; }
+.headline { color: var(--muted); margin: 6px 0 14px; font-size: 16.5px; }
+.facts { display: flex; flex-wrap: wrap; gap: 6px 22px; color: var(--muted); font-size: 14.5px; margin-bottom: 18px; }
+.facts b { color: var(--ink); }
+.match { display: flex; gap: 20px; align-items: center; padding: 16px; border: 1px solid var(--line); border-radius: 14px; margin: 4px 0 22px; background: var(--bg); }
+.ring { position: relative; width: 92px; height: 92px; flex: none; }
+.ring svg { transform: rotate(-90deg); }
+.ring circle { fill: none; stroke-width: 8; stroke-linecap: round; }
+.ring .bg { stroke: var(--line); }
+.ring .fg { stroke: var(--good); stroke-dasharray: 226.2; stroke-dashoffset: 226.2; transition: stroke-dashoffset 1.2s var(--ease) .3s; }
+.match.possible .fg { stroke: var(--warn); } .match.weak .fg { stroke: var(--bad); }
+.ring .num { position: absolute; inset: 0; display: grid; place-items: center; font: 500 30px var(--serif); }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 22px; }
+h3 { font: 700 14.5px var(--sans); margin: 0 0 10px; }
+h3.yes { color: var(--good); } h3.no { color: var(--bad); }
+.role { margin-bottom: 16px; padding-left: 14px; border-left: 3px solid var(--mark); }
+.role b { display: block; } .role small { color: var(--muted); font-size: 14px; }
+.role ul { margin: 6px 0 0; padding-left: 18px; }
+.chip.pop { animation: pop .4s var(--ease) both; animation-delay: calc(var(--i, 0) * 25ms + .3s); }
+.plain { margin: 0 0 22px; padding-left: 18px; } .plain li { margin-bottom: 6px; }
+.empty { color: var(--muted); margin: 0 0 22px; }
+
+/* motion */
+.rv { animation: rise .55s var(--ease) both; animation-delay: calc(var(--i, 0) * 70ms); }
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes fade { to { opacity: 1; } }
+@keyframes sweep { to { background-size: 100% 90%; color: var(--on-mark); } }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--pen) 50%, transparent); } 100% { box-shadow: 0 0 0 10px transparent; } }
+@keyframes pop { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: none; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes shake { 20%,60% { transform: translateX(-4px); } 40%,80% { transform: translateX(4px); } }
+@keyframes shimmer { to { background-position: -200% 0; } }
+@keyframes scan { 0% { top: -40px; } 100% { top: 100%; } }
+.sk { height: 14px; border-radius: 7px; margin-bottom: 12px; background: linear-gradient(90deg, var(--line) 25%, color-mix(in srgb, var(--line) 40%, var(--surface)) 50%, var(--line) 75%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+.skwrap { position: relative; overflow: hidden; min-height: 300px; }
+.scan { position: absolute; left: -8px; right: -8px; height: 34px; background: color-mix(in srgb, var(--mark) 55%, transparent); border-radius: 6px; animation: scan 1.9s var(--ease) infinite; }
+.status { margin-top: 16px; color: var(--muted); font-size: 14px; }
+
+/* toast */
+.toast { position: fixed; left: 50%; bottom: 26px; transform: translate(-50%, 24px); opacity: 0; background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: 11px; font-weight: 600; pointer-events: none; transition: transform .35s var(--ease), opacity .25s; z-index: 10; }
+.toast.show { transform: translate(-50%, 0); opacity: 1; }
+
+@media (max-width: 900px) {
+  .grid, .results { grid-template-columns: 1fr; }
+  .hint { display: none; }
+  .top { margin-bottom: 30px; }
+}
+@media (max-width: 560px) {
+  .wrap { padding: 16px 14px 80px; }
+  .cols, .two { grid-template-columns: 1fr; }
+  .panel { padding: 18px; } .title { font-size: 25px; } .tldr { font-size: 18px; }
+  .match { flex-direction: column; align-items: flex-start; }
+  .tabs { display: grid; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001s !important; animation-delay: 0s !important; transition-duration: .001s !important; }
+  .tldr span { opacity: 1; }
+  .source { scroll-behavior: auto; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><rect x="3" y="12" width="24" height="7" rx="2" transform="rotate(-3 15 15)" fill="var(--mark)"/><g stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"><path d="M5 7h20"/><path d="M5 15.5h14"/><path d="M5 24h18"/></g></svg>
+      <span class="brand-name">AI-Powered Content &amp; Resume Summarizer</span>
+    </div>
+    <div class="top-r">
+      <span class="badge hidden" id="mode-badge"></span>
+      <button class="icon-btn" id="theme" type="button" aria-label="Switch light or dark theme" title="Switch theme">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <section class="hero">
+    <h1>Long documents in. The gist out.</h1>
+    <p>Paste an article, drop in a report, or screen a resume. It writes the summary and marks the key passages in your original text.</p>
+  </section>
+
+  <form class="studio" id="form" novalidate>
+    <div class="tabs" id="tabs" data-mode="content" role="tablist" aria-label="What to summarize">
+      <span class="pill"></span>
+      <button type="button" role="tab" id="tab-content" aria-selected="true">Content</button>
+      <button type="button" role="tab" id="tab-resume" aria-selected="false">Resume</button>
+    </div>
+    <div class="grid">
+      <div>
+        <label class="f" for="text" id="text-label">Paste text</label>
+        <div class="ta-wrap"><textarea id="text" placeholder="Paste an article, meeting notes, or a report."></textarea></div>
+        <div class="ta-foot"><span id="wc">0 words</span><button type="button" class="linkbtn" id="use-example">Use example text</button></div>
+      </div>
+      <div class="side">
+        <label class="drop" id="drop">
+          <input type="file" id="file" accept=".pdf,.docx,.txt,.md" aria-label="Upload a file">
+          <div id="drop-body"></div>
+        </label>
+        <div id="url-wrap">
+          <label class="f" for="url">Or summarize a web page</label>
+          <input type="url" id="url" placeholder="https://example.com/article" autocomplete="off">
+        </div>
+        <div class="two" id="content-opts">
+          <div><label class="f" for="length">Length</label>
+            <select id="length"><option value="short">Short</option><option value="medium" selected>Medium</option><option value="long">Long</option></select></div>
+          <div><label class="f" for="style">Style</label>
+            <select id="style"><option value="bullets">Bullet points</option><option value="executive">Executive brief</option><option value="simple">Plain language</option></select></div>
+        </div>
+        <div id="resume-opts" class="hidden">
+          <label class="f" for="jd">Job description (optional)</label>
+          <textarea id="jd" style="min-height:120px" placeholder="Paste the role's requirements to get a match score."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="go" id="go" type="submit"><span class="spin"></span><span id="go-label">Summarize</span></button>
+      <span class="hint">or press <kbd>Ctrl</kbd> + <kbd>Enter</kbd></span>
+      <span class="error" id="error" role="alert"></span>
+    </div>
+  </form>
+
+  <section class="results" id="results" tabindex="-1" aria-live="polite">
+    <div class="panel" id="summary"></div>
+    <div class="panel">
+      <div class="ph"><h2>Original</h2><div class="nav hidden" id="nav">
+        <button type="button" id="prev" aria-label="Previous highlight"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+        <span id="nav-count">1 of 4</span>
+        <button type="button" id="next" aria-label="Next highlight"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button>
+      </div></div>
+      <div class="source" id="source"></div>
+    </div>
+  </section>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const words = (s) => (String(s).trim().match(/\S+/g) || []).length;
+const ul = (items, cls, none = "Nothing found.") => items && items.length ? `<ul class="${cls}">${items.map((i, n) => `<li class="rv" style="--i:${n + 2}">${esc(i)}</li>`).join("")}</ul>` : `<p class="empty">${none}</p>`;
+const chips = (items, pop) => items && items.length ? `<div class="chips">${items.map((i, n) => `<span class="chip${pop ? " pop" : ""}" style="--i:${n}">${esc(i)}</span>`).join("")}</div>` : "";
+
+/* ---------- example data (shown before the first real run) ---------- */
+const EXAMPLES = {
+  content: {
+    title: "Protected bike lanes cut injuries by 28 percent",
+    tldr: "Protected bike lanes reduced cyclist injuries by 28 percent across twelve cities in three years. The benefits were biggest near schools and transit stops, shops saw no sales loss, and lane design mattered more than lane count.",
+    key_points: [
+      "Twelve cities with physical barriers were compared with twelve similar cities that changed nothing.",
+      "The largest safety gains appeared near schools and transit stops.",
+      "Businesses along the lanes reported steady or higher sales.",
+      "Painted lines alone helped very little, and lanes that ended at intersections gave only modest gains.",
+    ],
+    topics: ["Cycling", "Urban planning", "Road safety"],
+    highlights: ["injuries fall by 28 percent over three years", "The largest gains came near schools and transit stops", "Painted lines alone showed little benefit", "connect lanes into continuous routes"],
+    source_text: "Cities that added protected bike lanes saw cyclist injuries fall by 28 percent over three years, according to a study released this week. The research followed twelve mid-sized cities that built physical barriers between bikes and traffic, and compared them with twelve similar cities that made no changes.\n\nThe largest gains came near schools and transit stops, where cyclist and pedestrian traffic is heaviest. Businesses along the new lanes reported steady or higher sales, easing a common worry among shop owners that removing parking would hurt trade.\n\nThe authors caution that results depend heavily on design. Painted lines alone showed little benefit, and lanes that ended abruptly at intersections produced only modest improvements. They recommend that cities connect lanes into continuous routes before expanding to new neighborhoods.",
+  },
+  resume: {
+    name: "Amara Okafor", headline: "Senior backend engineer focused on data platforms", location: "Lagos, Nigeria",
+    summary: "Amara is a senior engineer with about nine years building data-heavy backend systems. She has led teams of up to six and owns measurable latency and cost wins. Her stack is Python-first with strong AWS experience.",
+    years_experience: 9, seniority: "senior",
+    skills: { technical: ["Python", "SQL", "PostgreSQL", "FastAPI"], soft: ["Team leadership", "Mentoring"], tools: ["AWS", "Docker", "Terraform"] },
+    experience: [
+      { role: "Lead Backend Engineer", company: "Brightpath", dates: "2020 to present", highlights: ["Cut API latency 40% by redesigning caching", "Led a team of 6 through a billing migration"] },
+      { role: "Software Engineer", company: "Nimbus Labs", dates: "2016 to 2020", highlights: ["Built the ingestion pipeline handling 2M events per day"] },
+    ],
+    education: [{ degree: "B.Sc. Computer Science", school: "University of Lagos", year: "2016" }],
+    strengths: ["Clear ownership of measurable results", "Leadership experience alongside hands-on coding", "Deep, current Python and AWS skills"],
+    concerns: ["No Kubernetes experience listed", "Two-month gap between 2019 and 2020 is not explained"],
+    improvements: ["Add a two-line summary at the top", "Quantify the 2016 to 2020 impact beyond event volume", "Group skills by category"],
+    job_match: { score: 84, verdict: "strong", matched: ["Python", "AWS", "Team leadership", "SQL"], missing: ["Kubernetes"], reasoning: "Meets nearly every core requirement with strong evidence. Kubernetes is the one visible gap." },
+    source_text: "Amara Okafor\nSenior Backend Engineer, Lagos\n\nExperience\n2020 - Present  Lead Backend Engineer, Brightpath\n- Cut API latency 40% by redesigning caching\n- Led a team of 6 through a billing migration\n2016 - 2020  Software Engineer, Nimbus Labs\n- Built the ingestion pipeline handling 2M events per day\n\nEducation\nB.Sc. Computer Science, University of Lagos, 2016\n\nSkills: Python, SQL, PostgreSQL, FastAPI, AWS, Docker, Terraform",
+  },
+};
+EXAMPLES.resume_jd = "Senior backend engineer. Python, SQL, AWS. Experience leading a team. Kubernetes a plus.";
+
+const state = { mode: "content", shown: {}, marks: [], cur: -1, busy: false, demo: false };
+
+/* ---------- helpers ---------- */
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("show"), 2200);
+}
+async function copyText(s) {
+  try { await navigator.clipboard.writeText(s); }
+  catch { const a = document.createElement("textarea"); a.value = s; document.body.appendChild(a); a.select(); document.execCommand("copy"); a.remove(); }
+  toast("Copied to clipboard");
+}
+function download(name, s) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([s], { type: "text/markdown" })); a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  toast("Downloaded " + name);
+}
+function findRange(source, phrase) {
+  const q = String(phrase).trim(); if (!q) return null;
+  const pattern = q.split(/\s+/).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("\\s+");
+  const m = new RegExp(pattern, "i").exec(source);
+  return m ? [m.index, m.index + m[0].length] : null;
+}
+function highlightHtml(source, phrases) {
+  const ranges = (phrases || []).map((p) => findRange(source, p)).filter(Boolean).sort((a, b) => a[0] - b[0]);
+  let out = "", pos = 0, n = 0;
+  for (const [s, e] of ranges) {
+    if (s < pos) continue;
+    out += esc(source.slice(pos, s)) + `<mark style="--n:${n++}">${esc(source.slice(s, e))}</mark>`; pos = e;
+  }
+  return out + esc(source.slice(pos));
+}
+function tldrHtml(text) {
+  return String(text || "").split(/(\s+)/).map((w, i) => /^\s+$/.test(w) ? w : `<span style="animation-delay:${Math.min(i * 14, 1100)}ms">${esc(w)}</span>`).join("");
+}
+function tag(r, example) {
+  if (example) return `<span class="tag">Example</span>`;
+  if (r.demo) return `<span class="tag" title="No API key is set, so this is a basic keyword-based summary">Basic summary</span>`;
+  return "";
+}
+function setNav() {
+  state.marks = [...$("source").querySelectorAll("mark")]; state.cur = -1;
+  $("nav").classList.toggle("hidden", state.marks.length < 2);
+  $("nav-count").textContent = `${state.marks.length} highlights`;
+}
+function step(d) {
+  if (!state.marks.length) return;
+  state.marks.forEach((m) => m.classList.remove("on"));
+  state.cur = (state.cur + d + state.marks.length) % state.marks.length;
+  const m = state.marks[state.cur]; m.classList.remove("on"); void m.offsetWidth; m.classList.add("on");
+  const box = $("source");
+  box.scrollTo({ top: m.offsetTop - box.offsetTop - box.clientHeight / 2 + m.offsetHeight / 2, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  $("nav-count").textContent = `${state.cur + 1} of ${state.marks.length}`;
+}
+$("prev").onclick = () => step(-1); $("next").onclick = () => step(1);
+
+/* ---------- renderers ---------- */
+function renderContent(r, example) {
+  const original = words(r.source_text), summary = words(r.tldr + " " + (r.key_points || []).join(" "));
+  const shorter = Math.max(0, Math.round((1 - summary / Math.max(original, 1)) * 100));
+  $("summary").innerHTML = `
+    <div class="ph"><h2>Summary</h2>${tag(r, example)}</div>
+    <p class="title rv" style="--i:0">${esc(r.title)}</p>
+    <p class="tldr rv" style="--i:1">${tldrHtml(r.tldr)}</p>
+    ${ul(r.key_points, "pts")}
+    <div class="rv" style="--i:7">${chips(r.topics)}</div>
+    <div class="meta rv" style="--i:8">${original.toLocaleString()} words read${shorter ? `, about ${shorter}% shorter` : ""}.${r.truncated ? " Only the first part of a very long document was used." : ""}</div>
+    <div class="tools rv" style="--i:9"><button class="ghost" id="copy" type="button">Copy summary</button><button class="ghost" id="dl" type="button">Download .md</button></div>`;
+  const md = `# ${r.title}\n\n${r.tldr}\n\n${(r.key_points || []).map((p) => "- " + p).join("\n")}\n`;
+  $("copy").onclick = () => copyText(md); $("dl").onclick = () => download("summary.md", md);
+  $("source").innerHTML = highlightHtml(r.source_text, r.highlights); $("source").scrollTop = 0; setNav();
+}
+
+function renderResume(r, example) {
+  const jm = r.job_match, sk = r.skills || {};
+  const allSkills = [...(sk.technical || []), ...(sk.tools || []), ...(sk.soft || [])];
+  $("summary").innerHTML = `
+    <div class="ph"><h2>Candidate summary</h2>${tag(r, example)}</div>
+    <p class="who rv" style="--i:0">${esc(r.name || "Name not found")}</p>
+    <p class="headline rv" style="--i:1">${esc(r.headline)}</p>
+    <div class="facts rv" style="--i:2">
+      ${r.years_experience != null ? `<span><b>${esc(r.years_experience)}</b> years experience</span>` : ""}
+      ${r.seniority && r.seniority !== "unknown" ? `<span><b>${esc(r.seniority)}</b> level</span>` : ""}
+      ${r.location ? `<span>${esc(r.location)}</span>` : ""}
+    </div>
+    <p class="tldr rv" style="--i:3;font-size:18px">${esc(r.summary)}</p>
+    ${jm ? `<div class="match rv ${esc(jm.verdict)}" style="--i:4">
+        <div class="ring"><svg viewBox="0 0 80 80" width="92" height="92"><circle class="bg" cx="40" cy="40" r="36"/><circle class="fg" id="fg" cx="40" cy="40" r="36"/></svg><div class="num" id="num">0</div></div>
+        <div><b>Match with this role: ${esc(jm.verdict)}</b><div style="color:var(--muted)">${esc(jm.reasoning)}</div></div></div>
+      <div class="cols rv" style="--i:5"><div><h3 class="yes">Meets</h3>${ul(jm.matched, "plain")}</div><div><h3 class="no">Not shown</h3>${ul(jm.missing, "plain", "Every requirement is covered.")}</div></div>` : ""}
+    <div class="cols rv" style="--i:6"><div><h3>Strengths</h3>${ul(r.strengths, "plain")}</div><div><h3>Worth asking about</h3>${ul(r.concerns, "plain", "Nothing stood out.")}</div></div>
+    <h3 class="rv" style="--i:7">Skills</h3><div class="rv" style="--i:7">${chips(allSkills, true) || `<p class="empty">No skills detected.</p>`}</div>
+    <h3 class="rv" style="--i:8;margin-top:18px">Experience</h3>
+    ${(r.experience || []).map((x, n) => `<div class="role rv" style="--i:${9 + n}"><b>${esc(x.role)}</b><small>${esc(x.company)}${x.company && x.dates ? ", " : ""}${esc(x.dates)}</small>${x.highlights && x.highlights.length ? `<ul>${x.highlights.map((h) => `<li>${esc(h)}</li>`).join("")}</ul>` : ""}</div>`).join("") || `<p class="empty">No dated roles found.</p>`}
+    <h3>Education</h3>
+    ${(r.education || []).map((e) => `<div class="role"><b>${esc(e.degree)}</b><small>${esc(e.school)}${e.school && e.year ? ", " : ""}${esc(e.year)}</small></div>`).join("") || `<p class="empty">No education found.</p>`}
+    <h3>How to strengthen this resume</h3>${ul(r.improvements, "plain")}
+    ${r.truncated ? `<div class="meta">Only the first part of a very long resume was used.</div>` : ""}
+    <div class="tools"><button class="ghost" id="copy" type="button">Copy summary</button><button class="ghost" id="dl" type="button">Download .md</button></div>`;
+  const md = `# ${r.name || "Candidate"}\n${r.headline || ""}\n\n${r.summary || ""}\n\n## Strengths\n${(r.strengths || []).map((s) => "- " + s).join("\n")}\n\n## Worth asking about\n${(r.concerns || []).map((s) => "- " + s).join("\n")}\n${jm ? `\n## Job match: ${jm.score}/100 (${jm.verdict})\n${jm.reasoning}\n` : ""}`;
+  $("copy").onclick = () => copyText(md); $("dl").onclick = () => download("candidate-summary.md", md);
+  $("source").textContent = r.source_text; $("source").scrollTop = 0; setNav();
+  if (jm) animateScore(Math.max(0, Math.min(100, Number(jm.score) || 0)));
+}
+function animateScore(target) {
+  const fg = $("fg"), num = $("num"), C = 226.2;
+  requestAnimationFrame(() => requestAnimationFrame(() => { fg.style.strokeDashoffset = C * (1 - target / 100); }));
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduce) { num.textContent = target; return; }
+  const t0 = performance.now() + 300, dur = 1200;
+  (function tick(now) {
+    const p = Math.min(1, Math.max(0, (now - t0) / dur)), e = 1 - Math.pow(1 - p, 3);
+    num.textContent = Math.round(target * e); if (p < 1) requestAnimationFrame(tick);
+  })(performance.now());
+}
+function show(mode, r, example) {
+  state.shown[mode] = { r, example };
+  (mode === "content" ? renderContent : renderResume)(r, example);
+}
+
+/* ---------- loading state ---------- */
+function showLoading() {
+  const lines = (n) => Array.from({ length: n }, (_, i) => `<div class="sk" style="width:${[96, 88, 92, 60, 94, 78, 90, 52][i % 8]}%"></div>`).join("");
+  $("summary").innerHTML = `<div class="ph"><h2>Summary</h2></div><div class="sk" style="height:28px;width:70%;margin-bottom:20px"></div>${lines(4)}<div style="height:12px"></div>${lines(4)}<div class="status" id="status">Reading your ${state.mode === "resume" ? "resume" : "document"}…</div>`;
+  $("source").innerHTML = `<div class="skwrap">${lines(8)}<div style="height:16px"></div>${lines(6)}<div class="scan"></div></div>`;
+  $("nav").classList.add("hidden");
+  clearTimeout(showLoading.t);
+  showLoading.t = setTimeout(() => { const s = $("status"); if (s) s.textContent = "Still working. Long documents take a little longer."; }, 7000);
+}
+
+/* ---------- mode / tabs ---------- */
+function setMode(mode) {
+  state.mode = mode;
+  $("tabs").dataset.mode = mode;
+  $("tab-content").setAttribute("aria-selected", mode === "content");
+  $("tab-resume").setAttribute("aria-selected", mode === "resume");
+  $("content-opts").classList.toggle("hidden", mode !== "content");
+  $("url-wrap").classList.toggle("hidden", mode !== "content");
+  $("resume-opts").classList.toggle("hidden", mode !== "resume");
+  $("text-label").textContent = mode === "content" ? "Paste text" : "Paste resume text";
+  $("text").placeholder = mode === "content" ? "Paste an article, meeting notes, or a report." : "Paste the resume here, or upload a file.";
+  $("error").textContent = "";
+  const s = state.shown[mode]; show(mode, s ? s.r : EXAMPLES[mode], s ? s.example : true);
+}
+$("tab-content").onclick = () => setMode("content"); $("tab-resume").onclick = () => setMode("resume");
+
+/* ---------- inputs ---------- */
+function renderDrop(file) {
+  $("drop-body").innerHTML = file
+    ? `<div class="filechip"><span>${esc(file.name)}<small>${(file.size / 1024).toFixed(0)} KB</small></span><button type="button" id="rm">Remove</button></div>`
+    : `<b>Choose a file</b> or drop it here<br><span style="font-size:13.5px">PDF, DOCX, TXT or MD, up to 8 MB</span>`;
+  const rm = $("rm"); if (rm) rm.onclick = (e) => { e.preventDefault(); e.stopPropagation(); $("file").value = ""; renderDrop(null); };
+}
+renderDrop(null);
+$("file").onchange = () => renderDrop($("file").files[0] || null);
+["dragenter", "dragover"].forEach((ev) => $("drop").addEventListener(ev, (e) => { e.preventDefault(); $("drop").classList.add("over"); }));
+["dragleave", "drop"].forEach((ev) => $("drop").addEventListener(ev, () => $("drop").classList.remove("over")));
+$("drop").addEventListener("drop", (e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) { $("file").files = e.dataTransfer.files; renderDrop(f); } });
+$("text").addEventListener("input", () => { $("wc").textContent = `${words($("text").value).toLocaleString()} words`; });
+$("use-example").onclick = () => {
+  $("text").value = EXAMPLES[state.mode].source_text;
+  if (state.mode === "resume") $("jd").value = EXAMPLES.resume_jd;
+  $("text").dispatchEvent(new Event("input")); $("text").focus();
+};
+document.addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); $("form").requestSubmit(); } });
+
+/* ---------- submit ---------- */
+$("form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (state.busy) return;
+  const err = $("error"); err.textContent = ""; err.style.animation = "none";
+  const file = $("file").files[0], text = $("text").value.trim(), url = $("url").value.trim();
+  const ok = file || (state.mode === "content" && url) || text.length >= 30;
+  if (!ok) { void err.offsetWidth; err.style.animation = ""; err.textContent = state.mode === "content" ? "Add at least a few sentences, a link, or a file." : "Add the resume text or upload a file."; return; }
+
+  const fd = new FormData();
+  if (file) fd.append("file", file);
+  fd.append("text", text);
+  if (state.mode === "content") { fd.append("url", url); fd.append("length", $("length").value); fd.append("style", $("style").value); }
+  else fd.append("job_description", $("jd").value);
+
+  const mode = state.mode;
+  state.busy = true; $("go").disabled = true; $("go-label").textContent = "Reading…";
+  showLoading();
+  $("results").scrollIntoView({ behavior: "smooth", block: "start" });
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 120000);
+  try {
+    const res = await fetch(`/api/summarize/${mode}`, { method: "POST", body: fd, signal: ctl.signal });
+    let data = {}; try { data = await res.json(); } catch {}
+    if (!res.ok) throw new Error(data.detail || "Something went wrong. Try again.");
+    clearTimeout(showLoading.t);
+    if (state.mode === mode) show(mode, data, false); else state.shown[mode] = { r: data, example: false };
+    $("results").focus({ preventScroll: true });
+  } catch (ex) {
+    clearTimeout(showLoading.t);
+    const msg = ex.name === "AbortError" ? "That took too long. Try a shorter document." : (ex instanceof TypeError ? "Can't reach the server. Check that it is running." : ex.message);
+    err.style.animation = ""; err.textContent = msg; toast(msg);
+    const s = state.shown[mode]; show(mode, s ? s.r : EXAMPLES[mode], s ? s.example : true);
+  } finally {
+    clearTimeout(timer); state.busy = false; $("go").disabled = false; $("go-label").textContent = "Summarize";
+  }
+});
+
+/* ---------- theme + startup ---------- */
+$("theme").onclick = () => {
+  const root = document.documentElement;
+  const dark = root.dataset.theme === "dark" || (root.dataset.theme === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
+  root.dataset.theme = dark ? "light" : "dark";
+  try { localStorage.setItem("ai-summarizer-theme", root.dataset.theme); } catch {}
+};
+try { const t = localStorage.getItem("ai-summarizer-theme"); if (t) document.documentElement.dataset.theme = t; } catch {}
+fetch("/api/health").then((r) => r.json()).then((h) => {
+  state.demo = !!h.demo;
+  if (h.demo) { const b = $("mode-badge"); b.textContent = "Demo mode"; b.title = "No API key is set, so summaries are basic keyword-based ones. Add ANTHROPIC_API_KEY for AI summaries."; b.classList.remove("hidden"); }
+}).catch(() => {});
+show("content", EXAMPLES.content, true);
+</script>
+</body>
+</html>
